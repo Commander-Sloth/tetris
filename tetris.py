@@ -5,11 +5,13 @@ import sys
 import random
 
 gameArray = []
-ROWS = 16
-COLS = 10
+ROWS = 9
+COLS = 9
 gameOver = False
 WIN_W = 500
-WIN_H = 800
+WIN_H = 1000
+
+# Global variable to address the last generated shape type.
 
 gameScreen = pygame.display.set_mode((WIN_W, WIN_H))
 
@@ -28,15 +30,22 @@ for i in range(ROWS):
 		localCol.append(0)
 	gameArray.append(localCol)
 
-print(gameArray)
-
-gameArray[ROWS-1][0] = 2
+gameArray = [
+[0,0,0,0,0,0,0,0,0],
+[0,2,0,0,0,0,0,0,0],
+[0,2,0,0,0,0,0,0,0],
+[0,2,0,0,0,0,0,0,0],
+[0,2,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],
+[0,0,0,0,0,0,0,0,0],
+[0,2,0,0,2,0,0,0,0],
+[0,0,0,2,2,0,0,0,0],
+]
 
 def print_2DArray(array):
 	for row in range(ROWS):
 		print(array[row])
 
-print_2DArray(gameArray)
 
 def drawText(labelText, xPos, yPos):
 	fontColor = (255, 255, 255)
@@ -47,34 +56,99 @@ def drawText(labelText, xPos, yPos):
 	return gameScreen.blit(text, textRect)
 
 
+def validatePosition(rowPos, colPos):
+	if rowPos < 0 or rowPos > ROWS-1 or colPos > COLS-1 or colPos < 0 or gameArray[rowPos][colPos] == 2:
+		return False
+
+	elif rowPos >= 0 or rowPos <= ROWS-1 or colPos <= COLS-1 or colPos >= 0: # and gameArray[rowPos][colPos] != 2: 
+		return True
+
+def posInArray(rowPos, colPos):
+	if rowPos >= 0 and rowPos <= ROWS-1 and colPos <= COLS-1 and colPos >= 0:
+		return True
+	else:
+		
+		return False
+		
+def valueThere(rowPos, colPos):
+	if rowPos <= 0:
+		return False
+	if posInArray(rowPos, colPos):
+		if gameArray[rowPos][colPos] != 0 and gameArray[rowPos][colPos] != 1:
+			return True
+
+	return False
+
+def valInPos(rowPos, colPos):
+	global gameArray
+	if posInArray(rowPos, colPos) and gameArray[rowPos][colPos] != 0:
+		print('BAD val'+ str(gameArray[rowPos][colPos]) )
+		return True
+
+	return False
+
+
+def checkARow(moveDownArray):
+	global gameArray
+	# HERE MANUALLY GO THROUGH EACH ROW, becuase IF A ZERO IS IN THE BOTTOM, NONE WILL EVER GET FIXED
+
+	maybeGo = False
+	# Go through this row, and see if it is all zero. (Make sure it tests from the bottom up, otherwise it will always detect the blank first line)
+	for thisRow in range(ROWS-1,-1,-1):
+		for column in range(COLS):
+			if gameArray[thisRow][column] == 0:
+				maybeGood = True
+				return
+
+	print("Found a row to Erase")
+
+	# Move the shape down 1 more before rearranging the array.
+	for obj in moveDownArray:
+		#shapeMovement(shapeList, "Down") 
+		obj.blockDown()
+
+	# If there were no zeros in this row
+	gameArray.pop(thisRow)
+
+	columnToAdd = []
+	for column in range(COLS+1):
+		columnToAdd.append(0)
+
+	gameArray.insert(0, columnToAdd)
+
+
 def intoArray(array, row, col, val):
-	if row >= 0 and row < ROWS and col >= 0 and col < COLS:
+	if row > -1 and row < ROWS and col > -1 and col < COLS:
 		array[row][col] = val
 
 
 # Return False if the position below is 2 or the edge
 def testUnder(array, row, col):
-	if row > ROWS - 2:
-		print("Hit bottom")
-		return False
+	global gameArray
 
-	elif row > 0 and row < ROWS -1 and array[row+1][col] == 2: 
+	if row >= 0:
+		if row < ROWS-1 and gameArray[row+2][col] == 2:
+			#print("A 2")
+			return False
 
-		print("Hit a 2 at ROW: " + str(row))
-		return False
+		if row == ROWS-1:
+			#print("Hit bottom")
+			return False
 
+	
+	#print('Nothing under')
 	return True
 
 
 # Return False if the position right is 2 or the edge
 def testRight(array, row, col):
-	if col > COLS - 2:
-		print("Hit Edge")
+	if col == COLS - 1:
+		#print("Hit Edge")
 		return False
 
-	elif col > 0 and col < COLS - 1 and array[row][col+1] == 2: 
+	elif col < COLS - 1 and array[row][col+1] == 2: 
 
-		print("Hit a 2 at Col: " + str(col))
+		#print("Right : 2 at Col: " + str(col))
 		return False
 
 	else: return True
@@ -82,113 +156,182 @@ def testRight(array, row, col):
 
 # Return False if the position right is 2 or the edge
 def testLeft(array, row, col):
-	if col < 1:
-		print("Hit Edge")
+	if col == 0:
+		#print("Hit Edge")
 		return False
 
-	elif col > 0 and col < COLS -1 and array[row][col-1] == 2: 
+	elif col > 0 and array[row][col-1] == 2: 
 
-		print("Hit a 2 at Col: " + str(col))
+		#print("Left: 2 at Col: " + str(col))
 		return False
 
 	return True
 
 
-class Shape():
+class block():
 	def __init__(self, startX, startY):
 		self.yPos = startY
 		self.xPos = startX
-		#self.rotation = rotation
-		#self.shape = shape
-		self.num = random.randint(1,9)
-		self.validToDrop = True
-		self.validToLeft = True
-		self.validToRight = True
+
+	def draw(self, x, y):
+		global gameArray
+		if posInArray(y, x) == True:
+			gameArray[y][x] = 1
+
+			self.xPos ,self.yPos = x, y
+
+	def erase(self):
+		global gameArray
+		if posInArray(self.yPos, self.xPos):
+			gameArray[self.yPos][self.xPos] = 0
+
+	def freeze(self):
+		global gameArray
+		if posInArray(self.yPos, self.xPos):
+			gameArray[self.yPos][self.xPos] = 2
+		
+
+class Shape():
+	def __init__(self, coordinateList): # [x,y]
+		self.cent_yPos = coordinateList[0][1]
+		self.cent_xPos = coordinateList[0][0]
+		
+		self.blockList = []
+		for i in range(len(coordinateList)):
+			self.blockList.append(block(coordinateList[i][0],coordinateList[i][1]))
+
+	def clearBlocks(self):
+		global gameArray
+		for i in range(len(self.blockList)):
+			self.blockList[i].erase()
+
+	def stopBlocks(self):
+		global gameArray
+		for i in range(len(self.blockList)):
+			self.blockList[i].freeze()
+		spawnNewShape()
 
 	def updateDown(self):
 		global gameArray
-		if not testUnder(gameArray, self.yPos, self.xPos):
-			self.validToDrop = False
-		if self.validToDrop:
-			self.yPos = self.yPos + 1
+		self.clearBlocks()
 
-	def updateRight(self):
-		global gameArray
-		if testRight(gameArray, self.yPos, self.xPos):
-			self.xPos = self.xPos + 1
+		goodToMove = True
+		for a in range(len(self.blockList)):
+			newX = self.blockList[a].xPos + 0
+			newY = self.blockList[a].yPos + 1 
+			
+			if (not posInArray(newY, newX) and newY>ROWS-1) or valInPos(newY, newX):
+				goodToMove = False
+				self.stopBlocks()# STOP THE FUNCTION: SPAWN NEW SHPAE
 
-	def updateLeft(self):
-		global gameArray
-		if testLeft(gameArray, self.yPos, self.xPos):
-			self.xPos = self.xPos - 1
+		if goodToMove:
+			for i in range(len(self.blockList)):
+				self.blockList[i].xPos += 0
+				self.blockList[i].yPos += 1
+				# Update the center coordinates.
+				if i == 0:
+					self.cent_yPos = self.blockList[0].yPos
+					self.cent_xPos = self.blockList[0].xPos
 
-	def getShape(self, value):
-		global gameArray
-		intoArray(gameArray, self.yPos, self.xPos, value)
+				self.blockList[i].draw(self.blockList[i].xPos, self.blockList[i].yPos)
+
+	def drawBlocks(self):
+		for i in range(len(self.blockList)):
+			self.blockList[i].draw(self.blockList[i].xPos, self.blockList[i].yPos)#self.blockList[i].draw(self.cent_xPos, self.cent_xPos)
+
+	def moveBlocks(self, direction):
+		goodToMove = True
+		for a in range(len(self.blockList)):
+			thisRise = self.blockList[a].yPos - self.cent_yPos # y2 - y1
+			thisRun = self.blockList[a].xPos - self.cent_xPos # x2 - x1
+
+			if direction == "Right":
+				newX = self.blockList[a].xPos + (1)
+				newY = self.blockList[a].yPos
+			elif direction == "Left":
+				newX = self.blockList[a].xPos + (-1)
+				newY = self.blockList[a].yPos
+
+			if not posInArray(newY, newX) or valueThere(newY, newX): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
+				goodToMove = False
+				return# STOP THE FUNCTION: this is not a valid rotation
+		
+		if goodToMove:
+			self.clearBlocks()
+			for i in range(len(self.blockList)):
+
+				if direction == "Right":
+					newX = self.blockList[i].xPos + (1)
+					newY = self.blockList[i].yPos
+				elif direction == "Left":
+					newX = self.blockList[i].xPos + (-1)
+					newY = self.blockList[i].yPos
 				
-	def blockDown(self):
-		self.getShape(0)
-		self.updateDown()
-		self.getShape(1)
+				self.blockList[i].draw(newX, newY)
+		print('MOved')
 
-	def blockRight(self):
-		self.getShape(0)
-		self.updateRight()
-		self.getShape(1)
+	def rotateBlocks(self, rotation):
+		goodToMove = True
+		for a in range(len(self.blockList)):
+			thisRise = self.blockList[a].yPos - self.cent_yPos # y2 - y1
+			thisRun = self.blockList[a].xPos - self.cent_xPos # x2 - x1
 
-	def blockLeft(self):
-		self.getShape(0)
-		self.updateLeft()
-		self.getShape(1)
+			if rotation == -90:
+				newX = self.cent_xPos + (-thisRise)
+				newY = self.cent_yPos + (thisRun)
+			elif rotation == 90:
+				newX = self.cent_xPos + (thisRise)
+				newY = self.cent_yPos + (-thisRun)
 
-	def solidify(self):
-		self.getShape(2)
+			if not posInArray(newY, newX) or valueThere(newY, newX): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
+				goodToMove = False
+				return# STOP THE FUNCTION: this is not a valid rotation
+		
+		if goodToMove:
+			self.clearBlocks()
+			for i in range(len(self.blockList)):
+				thisRise = self.blockList[i].yPos - self.cent_yPos # y2 - y1
+				thisRun = self.blockList[i].xPos - self.cent_xPos # x2 - x1
 
+				if rotation == -90:
+					newX = self.cent_xPos + (-thisRise)
+					newY = self.cent_yPos + (thisRun)
+				elif rotation == 90:
+					newX = self.cent_xPos + (thisRise)
+					newY = self.cent_yPos + (-thisRun)
+				
+				self.blockList[i].draw(newX, newY)
+		print('ROTATED')
+				
 
-def getShapeList(rotation, shape, centX, centY):
-	shapesList = []
-
-	# Just try to draw these from the (TOP DOWN)obottom up for some reason, because they are overwriting themselves when they are below.
-	if shape == "I":
-		# Get the modulator to 0, if it is over 360 yeah?
-		if rotation == 0 or 180:
-			shapesList.extend((Shape(centX, centY+1),Shape(centX, centY),Shape(centX, centY-1),Shape(centX, centY-2)))		
-
-	return shapesList
-
-testShape = getShapeList(0, "I", random.randint(0,COLS-1), -3)
+#shapeTest = Shape([[2,5],[3,7]])
+shapeTest = Shape([[2,0],[3,0]])
 
 def spawnNewShape():
-	global testShape
-
-	testShape = []
-	testShape = getShapeList(0, "I", random.randint(0,COLS-1), -3)
+	global shapeTest
+	shapeTest = []
+	shapeTest = Shape([[2,-1],[3,-1]])
 
 
 def shapeMovement(array, direction):
-	if direction == "Down":
-		for obj in array:
-			for o in array:
-				if o.validToDrop == False:
-					for objw in array:
-						objw.solidify()
+	global shapeList, gameArray
 
-					spawnNewShape()
-					checkGrid() # HERE, draw the grid before you restARt, to see what happened
-					return # Stop processing this shape, get a new shape.
-			obj.blockDown()
-	elif direction == "Right":
-		for obj in array:
-			for o in array:
-				if o.validToRight == False:
-					return # Stop processing this shape, get a new shape.
-			obj.blockRight()
-	elif direction == "Left":
-		for obj in array:
-			for o in array:
-				if o.validToLeft == False:
-					return # Stop processing this shape, get a new shape.
-			obj.blockLeft()
+
+def testNewRotation(array, rotation):
+	global crntCentInd, crntRotation, crntShape
+
+	# Use the information of the last used shape.
+	tempShapeList = getShapeList(rotation, crntShape, array[crntCentInd].xPos, array[crntCentInd].yPos)
+
+	for obj in tempShapeList:
+		#print(validatePosition(obj.yPos, obj.xPos))
+		if not validatePosition(obj.yPos, obj.xPos):
+			#print("Invalid pos")
+			return False
+
+	# If all of the spaces are valid to rotate into, then return True to do it!
+	return True
+
 
 
 def checkGrid():
@@ -202,20 +345,24 @@ def checkGrid():
 
 
 def drawArray(array):
-
-	shapeMovement(testShape, "Down")
+	global shapeList
 
  	#rectSize = 10
 	SPREAD = 40
 	MARG = 40
 	for rows in range(ROWS):
 		for cols in range(COLS):
-			drawText(str(array[rows][cols]), cols * SPREAD + MARG, rows * SPREAD + MARG)
+			if array[rows][cols] > 0:
+				drawText(str(array[rows][cols]), cols * SPREAD + MARG, rows * SPREAD + MARG)
+				if shapeTest.cent_yPos == rows and shapeTest.cent_xPos == cols:
+					drawText('C', cols * SPREAD + MARG, rows * SPREAD + MARG)
+	shapeTest.drawBlocks()
+
 
 
 def updateDisplay():
 	timeTracker = 0
-	global testShape
+	global shapeList
 	global gameArray
 	global gameOver
 
@@ -230,13 +377,22 @@ def updateDisplay():
 					pygame.quit()
 					sys.exit()
 				elif event.key == pygame.K_RIGHT:
-					shapeMovement(testShape, "Right")
+					shapeTest.moveBlocks("Right")
 				elif event.key == pygame.K_LEFT:
-					shapeMovement(testShape, "Left")
+					shapeTest.moveBlocks("Left")
+				elif event.key == pygame.K_UP:
+					shapeTest.rotateBlocks(90)
+				elif event.key == pygame.K_DOWN:
+					shapeTest.rotateBlocks(-90)
 
-		if timeTracker % 50 == 0:
-			gameScreen.fill(backgroundCol)
-			drawArray(gameArray)
+		gameScreen.fill(backgroundCol)
+		if timeTracker % 80 == 0:
+			None
+			# Here, draw the array real time, but play the game in here (separate this function).
+			#shapeMovement(shapeList, "Down")
+			shapeTest.updateDown()
+
+		drawArray(gameArray)
 
 
 		pygame.display.update()
