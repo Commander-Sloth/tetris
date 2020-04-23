@@ -4,7 +4,8 @@ import pygame
 import sys
 import random
 
-# heRE, pass a value to block, for the number, and then it sets the grid to that when it frezzes. Also, pass the value into ifVAlThere to exlude that
+# Make sure to get rid of unnecessary globaL decelerations
+# SIDE: Display Shape, Score, What each key does
 
 gameArray = []
 ROWS = 20
@@ -14,12 +15,11 @@ MARG = 40
 gameOver = False
 WIN_W = COLS * SPREAD + MARG
 WIN_H = ROWS * SPREAD + MARG
-colors = [["B", (4, 3, 254)],["O", (255, 100, 3)],["Y", (254, 255, 3)],["P", (255, 102, 255)],["G", (3, 153, 2)],["R", (255, 3, 4)],["L", (3, 255, 255)]]
-# Global variable to address the last generated shape type.
+colors = [["Y", (254, 255, 3)],["R", (255, 3, 4)],["G", (3, 153, 2)],["L", (3, 255, 255)],["O", (255, 100, 3)],["B", (4, 3, 254)],["P", (160, 0, 241)],]
 
 gameScreen = pygame.display.set_mode((WIN_W, WIN_H))
 
-backgroundCol = (0, 0, 0)
+backgroundCol = (231, 223, 214)
 
 clock = pygame.time.Clock()
 
@@ -33,6 +33,8 @@ for i in range(ROWS):
 	for j in range(COLS):
 		localCol.append(0)
 	gameArray.append(localCol)
+
+displayShape = [[0, 0, 0],[0, 0, 0],[0, 0, 0],[0, 0, 0]]
 
 def print_2DArray(array):
 	for row in range(ROWS):
@@ -69,8 +71,7 @@ def posInArray(rowPos, colPos):
 def valInPos(rowPos, colPos):
 	global gameArray
 	if posInArray(rowPos, colPos) and gameArray[rowPos][colPos] != 0:
-		print('BAD val'+ str(gameArray[rowPos][colPos]) )
-		return True
+		return True # Bad value, there is something here.
 
 	return False
 
@@ -79,7 +80,7 @@ def checkRows():
 	global gameArray,shapeTest
 
 	for thisRow in range(ROWS-1,-1,-1):
-		if not (0 in gameArray[thisRow]):
+		if not (0 in gameArray[thisRow]) and not isinstance(gameArray[thisRow], int): # HERE, I had problems here, but I only want it to detect a FULL row of letters, not any numbers of the current moving shape.
 			removeRow(thisRow)
 
 
@@ -101,13 +102,13 @@ class block():
 	def __init__(self, startX, startY, number):
 		self.yPos = startY
 		self.xPos = startX
-		self.value = number
-		self.letter = colors[self.value-1][0]
+		self.shapeID = number
+		self.letter = colors[self.shapeID-1][0]
 
 	def draw(self, x, y):
 		global gameArray
 		if posInArray(y, x) == True:
-			gameArray[y][x] = self.value
+			gameArray[y][x] = self.shapeID
 
 			self.xPos ,self.yPos = x, y
 
@@ -116,33 +117,39 @@ class block():
 		if posInArray(self.yPos, self.xPos):
 			gameArray[self.yPos][self.xPos] = 0
 
-	def freeze(self): # HERE:IS this function obselete now?
+	def freeze(self): # HERE:IS this function obsolete now?
 		global gameArray
 		if posInArray(self.yPos, self.xPos):
 			gameArray[self.yPos][self.xPos] = self.letter
 
-		
-# heRE, pass a value to block, for the number, and then it sets the grid to that when it frezzes. Also, pass the value into ifVAlThere to exlude that
+# Here: define color based off of id now		
 class Shape():
-	def __init__(self, coordinateList): # [x,y]
+	def __init__(self, coordinateList, shapeID): # [x,y]
+		global displayShape
 		self.cent_yPos = coordinateList[0][1]
 		self.cent_xPos = coordinateList[0][0]
+		self.shapeID = shapeID
 		self.goodToRotate = True
-		self.value = random.randint(1,len(colors))
+		# self.value = random.randint(1,len(colors)) //If you want a random color, make a self.value variable to use. Truehen only use self.id when youcvaddress the type of shape; (but make sure the random number is passed to displayShape array so they match)
+
+		# get a list of the coordinates based off of 1,2 // index coords, and set 
+		self.displayCoors = getShapeList(1, 2, self.shapeID)
+		for i in range(len(self.displayCoors)):
+			displayShape[self.displayCoors[i][1]][self.displayCoors[i][0]] = self.shapeID
 
 		if coordinateList == [[coordinateList[0][0], coordinateList[0][1]],[coordinateList[0][0]+1, coordinateList[0][1]],[coordinateList[0][0]+1, coordinateList[0][1]+1],[coordinateList[0][0], coordinateList[0][1]+1]]:
 			self.goodToRotate = False # If this shape is a square, probably don't move it.
 
 		self.blockList = []
 		for i in range(len(coordinateList)):
-			self.blockList.append(block(coordinateList[i][0],coordinateList[i][1], self.value))
+			self.blockList.append(block(coordinateList[i][0],coordinateList[i][1], self.shapeID))
 
 	def clearBlocks(self):
 		global gameArray
 		for i in range(len(self.blockList)):
 			self.blockList[i].erase()
 
-	def stopBlocks(self): # Here: The problem is that a row is deleted, and a new block spawns,
+	def stopBlocks(self): # Here: Small bug: (Hard to see): The problem is: a row is deleted, and a new block spawns, but it hits a wall at the top, and the game stops for some reason.
 		global gameArray, gameOver
 		for i in range(len(self.blockList)):
 			self.blockList[i].freeze()
@@ -192,7 +199,7 @@ class Shape():
 				newX = self.blockList[a].xPos + (-1)
 				newY = self.blockList[a].yPos
 
-			if not posInArray(newY, newX) or (posInArray(newY, newX) and gameArray[newY][newX] != 0 and gameArray[newY][newX] != self.value): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
+			if not posInArray(newY, newX) or (posInArray(newY, newX) and gameArray[newY][newX] != 0 and gameArray[newY][newX] != self.shapeID): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
 				goodToMove = False
 				return# STOP THE FUNCTION: this is not a valid rotation
 
@@ -200,7 +207,6 @@ class Shape():
 		if goodToMove:
 			self.clearBlocks()
 			for i in range(len(self.blockList)):
-
 				if direction == "Right":
 					newX = self.blockList[i].xPos + (1)
 					newY = self.blockList[i].yPos
@@ -209,7 +215,6 @@ class Shape():
 					newY = self.blockList[i].yPos
 				
 				self.blockList[i].draw(newX, newY)
-		print('Moved ' + str(direction))
 
 	def rotateBlocks(self, rotation):
 		global gameArray
@@ -226,7 +231,7 @@ class Shape():
 				newX = self.cent_xPos + (thisRise)
 				newY = self.cent_yPos + (-thisRun)
 
-			if not posInArray(newY, newX) or (posInArray(newY, newX) and gameArray[newY][newX] != 0 and gameArray[newY][newX] != self.value): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
+			if not posInArray(newY, newX) or (posInArray(newY, newX) and gameArray[newY][newX] != 0 and gameArray[newY][newX] != self.shapeID): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
 				goodToMove = False
 				return# STOP THE FUNCTION: this is not a valid rotation
 		
@@ -244,10 +249,9 @@ class Shape():
 					newY = self.cent_yPos + (-thisRun)
 				
 				self.blockList[i].draw(newX, newY)
-		print('ROTATED')
 				
-# Here: make the shapes unrotatable if it is a square. If the shape coordintates list matches the square, dont rotateit.
-def getShapeList(x, y):
+# Here: make the shapes unrotatible if it is a square. If the shape coordinates list matches the square, dont rotateit.
+def getShapeList(x, y, randInt):
 	centX = x
 	centY = y
 	shapeList = [
@@ -255,11 +259,11 @@ def getShapeList(x, y):
 			[centX, centY],[centX+1, centY],[centX+1, centY+1],[centX, centY+1]
 		], # O
 		[
-			[centX, centY],[centX-1, centY],[centX+1, centY-1],[centX, centY-1]
-		], # S
-		[
 			[centX, centY],[centX-1, centY-1],[centX, centY-1],[centX+1, centY]
 		], # Z
+		[
+			[centX, centY],[centX-1, centY],[centX+1, centY-1],[centX, centY-1]
+		], # S
 		[
 			[centX, centY],[centX, centY+1],[centX, centY-1],[centX, centY-2]
 		], # I
@@ -274,19 +278,21 @@ def getShapeList(x, y):
 		] # T
 	]
 
-	blockCoorList = random.choice(shapeList)
+	blockCoorList = shapeList[randInt-1]#random.choice(shapeList)
 
 	return blockCoorList # [[2,0],[3,0]]
 
-
-shape = getShapeList(0, 0)
-shapeTest = Shape(shape)#shapeRotable(shape)
+randomShapeID = random.randint(1,7) # 7 is the number of different shapes
+shape = getShapeList(round(COLS/2), -1, randomShapeID)
+shapeTest = Shape(shape, randomShapeID)#shapeRotable(shape)
 
 def spawnNewShape():
-	global shapeTest
+	global shapeTest, displayShape
+	displayShape = [[0, 0, 0],[0, 0, 0],[0, 0, 0],[0, 0, 0]]
 	shapeTest = []
-	shape = getShapeList(0, 0)
-	shapeTest = Shape(shape)#Shape([[2,-1],[3,-1]])
+	randomShapeID = random.randint(1,7) # 7 is the number of different shapes
+	shape = getShapeList(round(COLS/2), -1, randomShapeID)
+	shapeTest = Shape(shape, randomShapeID)#shapeRotable(shape)
 
 
 def checkGrid(): # HERE, delete this
@@ -302,7 +308,7 @@ def checkGrid(): # HERE, delete this
 
 
 def drawArray(array):
-	global shapeTest
+	global shapeTest, displayShape
 
 	for rows in range(ROWS):
 		for cols in range(COLS):
@@ -321,13 +327,19 @@ def drawArray(array):
 					thisColor = colors[array[rows][cols]-1][1]
  
 				pygame.draw.rect(gameScreen, thisColor, ((cols * SPREAD) + MARG - SPREAD/2, (rows * SPREAD) + MARG - SPREAD/2, SPREAD, SPREAD))
-				if shapeTest != []:  
-					if shapeTest.cent_yPos == rows and shapeTest.cent_xPos == cols:
-						drawText('C', cols * SPREAD + MARG, rows * SPREAD + MARG)
+				# if shapeTest != []:  
+				# 	if shapeTest.cent_yPos == rows and shapeTest.cent_xPos == cols:
+				# 		drawText('C', cols * SPREAD + MARG, rows * SPREAD + MARG)
 
 	if shapeTest != []:
 		shapeTest.drawBlocks()
-	#checkGrid(), I donty think I need this becuase I am checking the rows in the updateDisplay loop also
+
+	for rows in range(4):
+		for cols in range(3):
+			if displayShape[rows][cols] != 0:
+				thisColor = colors[displayShape[rows][cols]-1][1]
+				pygame.draw.rect(gameScreen, thisColor, ((cols * SPREAD) + MARG - SPREAD/2, (rows * SPREAD) + MARG - SPREAD/2, SPREAD, SPREAD))
+	#checkGrid(), I donty think I need this because I am checking the rows in the updateDisplay loop also
 
 
 
@@ -352,11 +364,14 @@ def updateDisplay():
 					shapeTest.moveBlocks("Left")
 				elif event.key == pygame.K_UP:
 					shapeTest.rotateBlocks(90)
-				elif event.key == pygame.K_DOWN:
-					shapeTest.rotateBlocks(-90)
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_DOWN:
+					if shapeTest != []:
+						shapeTest.updateDown()
+					#shapeTest.rotateBlocks(-90)., This used to be in the KEYUP event
 
 		gameScreen.fill(backgroundCol)
-		if timeTracker % 30 == 0:
+		if timeTracker % 20 == 0:
 			None
 			# Here, draw the array real time, but play the game in here (separate this function).
 			#shapeMovement(shapeList, "Down")
@@ -385,8 +400,8 @@ def updateDisplay():
 		if timeTracker % 10 == 0:
 			gameScreen.fill(backgroundCol)
 			#drawArray(gameArray)
-			drawText("GAME OVER", 0, 0)
-
+			drawText("GAME OVER", WIN_W/2, WIN_H/2)
+			drawArray(gameArray)
 
 		pygame.display.update()
 		clock.tick(60)
