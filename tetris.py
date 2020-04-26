@@ -12,12 +12,13 @@ score = 0
 ROWS = 20
 COLS = 10
 TILE_SIZE = 20
-MARG = 40
+MARG = TILE_SIZE
 SIDEBAR_W = TILE_SIZE * 6
 gameOver = False
 WIN_W = COLS * TILE_SIZE + MARG + SIDEBAR_W
 WIN_H = ROWS * TILE_SIZE + MARG
-colors = [["Y", (254, 255, 3)],["R", (255, 3, 4)],["G", (3, 153, 2)],["L", (47, 245, 255)],["O", (255, 100, 3)],["B", (4, 3, 254)],["P", (160, 0, 241)],]
+colors = [["Y", (254, 255, 3)],["R", (255, 3, 4)],["G", (3, 153, 2)],["L", (47, 245, 255)],["O", (255, 100, 3)],["B", (4, 3, 254)],["P", (160, 0, 241)]]
+darkerColors = [["Y", (198, 198, 3)],["R", (153, 3, 5)],["G", (3, 104, 2)],["L", (32, 168, 173)],["O", (168, 66, 3)],["B", (3, 3, 160)],["P", (102, 0, 158)]]
 
 gameScreen = pygame.display.set_mode((WIN_W, WIN_H))
 
@@ -333,10 +334,16 @@ def drawArray(array):
 					for elem in colors:
 						if elem[0] == array[rows][cols]:
 							thisColor = elem[1]
+					for elem in darkerColors:
+						if elem[0] == array[rows][cols]:
+							thisDarkCol = elem[1]
 				elif isinstance(array[rows][cols], int):
 					thisColor = colors[array[rows][cols]-1][1]
- 
-				pygame.draw.rect(gameScreen, thisColor, ((cols * TILE_SIZE) + MARG - TILE_SIZE/2, (rows * TILE_SIZE) + MARG - TILE_SIZE/2, TILE_SIZE, TILE_SIZE))
+					thisDarkCol = darkerColors[array[rows][cols]-1][1]
+				
+				pygame.draw.rect(gameScreen, thisDarkCol, ((cols * TILE_SIZE) + MARG - TILE_SIZE/2, (rows * TILE_SIZE) + MARG - TILE_SIZE/2, TILE_SIZE, TILE_SIZE))
+				pygame.draw.rect(gameScreen, thisColor, ((cols * TILE_SIZE) + MARG - TILE_SIZE/2, (rows * TILE_SIZE) + MARG - TILE_SIZE/2, TILE_SIZE*.75, TILE_SIZE*.75))
+			
 
 	if tetrimoObj != []:
 		tetrimoObj.drawBlocks()
