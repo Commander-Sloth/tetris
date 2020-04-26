@@ -2,25 +2,28 @@
 # Started on 3/4/2020
 import pygame
 import sys
-import random
+import random, time
 
 # Make sure to get rid of unnecessary globaL decelerations
 # SIDE: Display Shape, Score, What each key does
 
 gameArray = []
+score = 0
 ROWS = 20
 COLS = 10
-SPREAD = 40
+TILE_SIZE = 20
 MARG = 40
+SIDEBAR_W = TILE_SIZE * 6
 gameOver = False
-WIN_W = COLS * SPREAD + MARG
-WIN_H = ROWS * SPREAD + MARG
-colors = [["Y", (254, 255, 3)],["R", (255, 3, 4)],["G", (3, 153, 2)],["L", (3, 255, 255)],["O", (255, 100, 3)],["B", (4, 3, 254)],["P", (160, 0, 241)],]
+WIN_W = COLS * TILE_SIZE + MARG + SIDEBAR_W
+WIN_H = ROWS * TILE_SIZE + MARG
+colors = [["Y", (254, 255, 3)],["R", (255, 3, 4)],["G", (3, 153, 2)],["L", (47, 245, 255)],["O", (255, 100, 3)],["B", (4, 3, 254)],["P", (160, 0, 241)],]
 
 gameScreen = pygame.display.set_mode((WIN_W, WIN_H))
 
-backgroundCol = (231, 223, 214)
+backgroundCol = (39, 58, 62)
 
+start_time = time.time()
 clock = pygame.time.Clock()
 
 pygame.display.set_caption("Tetris")
@@ -54,18 +57,7 @@ def posInArray(rowPos, colPos):
 	if rowPos >= 0 and rowPos <= ROWS-1 and colPos <= COLS-1 and colPos >= 0:
 		return True
 	else:
-		
 		return False
-	
-# def valueThere(rowPos, colPos):
-# 	if rowPos <= 0:
-# 		return False
-# 	if posInArray(rowPos, colPos):
-# 		if gameArray[rowPos][colPos] != 0 and gameArray[rowPos][colPos] != 1:
-# 			return True
-
-# 	return False
-
 
 
 def valInPos(rowPos, colPos):
@@ -77,17 +69,23 @@ def valInPos(rowPos, colPos):
 
 
 def checkRows():
-	global gameArray,shapeTest
+	global gameArray,tetrimoObj
 
 	for thisRow in range(ROWS-1,-1,-1):
-		if not (0 in gameArray[thisRow]) and not isinstance(gameArray[thisRow], int): # HERE, I had problems here, but I only want it to detect a FULL row of letters, not any numbers of the current moving shape.
+		# Go through the row, and "continue" if it is a number. I think I fixed this. I played a game and the bug didn't happen, but I need to test more.
+		for col in range(COLS):
+			if isinstance(gameArray[thisRow][col], int):
+				continue
+
+		if not (0 in gameArray[thisRow]): # HERE, I had problems here, but I only want it to detect a FULL row of letters, not any numbers of the current moving shape.
 			removeRow(thisRow)
+		#	return
 
 
 def removeRow(rowThatIsFull):
-	global gameArray, shapeTest
+	global gameArray, tetrimoObj
 
-	shapeTest.updateDown()
+	#tetrimoObj.updateDown()
 
 	gameArray.pop(rowThatIsFull)
 	
@@ -97,6 +95,7 @@ def removeRow(rowThatIsFull):
 
 	gameArray.insert(0, columnToAdd)
 	checkRows()
+
 
 class block():
 	def __init__(self, startX, startY, number):
@@ -109,7 +108,6 @@ class block():
 		global gameArray
 		if posInArray(y, x) == True:
 			gameArray[y][x] = self.shapeID
-
 			self.xPos ,self.yPos = x, y
 
 	def erase(self):
@@ -117,12 +115,12 @@ class block():
 		if posInArray(self.yPos, self.xPos):
 			gameArray[self.yPos][self.xPos] = 0
 
-	def freeze(self): # HERE:IS this function obsolete now?
+	def freeze(self):
 		global gameArray
 		if posInArray(self.yPos, self.xPos):
 			gameArray[self.yPos][self.xPos] = self.letter
 
-# Here: define color based off of id now		
+	
 class Shape():
 	def __init__(self, coordinateList, shapeID): # [x,y]
 		global displayShape
@@ -132,7 +130,7 @@ class Shape():
 		self.goodToRotate = True
 		# self.value = random.randint(1,len(colors)) //If you want a random color, make a self.value variable to use. Truehen only use self.id when youcvaddress the type of shape; (but make sure the random number is passed to displayShape array so they match)
 
-		# get a list of the coordinates based off of 1,2 // index coords, and set 
+		# get a list of the coordinates based off of x:1,y:2 of this little array.
 		self.displayCoors = getShapeList(1, 2, self.shapeID)
 		for i in range(len(self.displayCoors)):
 			displayShape[self.displayCoors[i][1]][self.displayCoors[i][0]] = self.shapeID
@@ -144,18 +142,21 @@ class Shape():
 		for i in range(len(coordinateList)):
 			self.blockList.append(block(coordinateList[i][0],coordinateList[i][1], self.shapeID))
 
+
 	def clearBlocks(self):
 		global gameArray
 		for i in range(len(self.blockList)):
 			self.blockList[i].erase()
 
+
 	def stopBlocks(self): # Here: Small bug: (Hard to see): The problem is: a row is deleted, and a new block spawns, but it hits a wall at the top, and the game stops for some reason.
-		global gameArray, gameOver
-		for i in range(len(self.blockList)):
-			self.blockList[i].freeze()
-			if self.blockList[i].yPos == 0:
+		global gameOver
+		for e in self.blockList:
+			if e.yPos == 0:
 				gameOver = True
+			e.freeze()
 		spawnNewShape()
+
 
 	def updateDown(self):
 		global gameArray
@@ -167,7 +168,9 @@ class Shape():
 			
 			if (not posInArray(newY, newX) and newY>ROWS-1) or valInPos(newY, newX):
 				goodToMove = False
-				self.stopBlocks()# STOP THE FUNCTION: SPAWN NEW SHPAE
+				print('Cannot move down')
+				self.stopBlocks() # STOP THE FUNCTION: SPAWN NEW SHAPE.
+				return
 
 		if goodToMove:
 			for i in range(len(self.blockList)):
@@ -180,9 +183,11 @@ class Shape():
 
 				self.blockList[i].draw(self.blockList[i].xPos, self.blockList[i].yPos)
 
+
 	def drawBlocks(self):
 		for i in range(len(self.blockList)):
 			self.blockList[i].draw(self.blockList[i].xPos, self.blockList[i].yPos)#self.blockList[i].draw(self.cent_xPos, self.cent_xPos)
+
 
 	def moveBlocks(self, direction):
 		global gameArray
@@ -216,6 +221,7 @@ class Shape():
 				
 				self.blockList[i].draw(newX, newY)
 
+
 	def rotateBlocks(self, rotation):
 		global gameArray
 
@@ -233,7 +239,7 @@ class Shape():
 
 			if not posInArray(newY, newX) or (posInArray(newY, newX) and gameArray[newY][newX] != 0 and gameArray[newY][newX] != self.shapeID): #valueThere(newY, newX): #or (newX >= 0 and newX <= COLS-1):#
 				goodToMove = False
-				return# STOP THE FUNCTION: this is not a valid rotation
+				return # STOP THE FUNCTION: this is not a valid rotation.
 		
 		if goodToMove:
 			self.clearBlocks()
@@ -250,7 +256,7 @@ class Shape():
 				
 				self.blockList[i].draw(newX, newY)
 				
-# Here: make the shapes unrotatible if it is a square. If the shape coordinates list matches the square, dont rotateit.
+
 def getShapeList(x, y, randInt):
 	centX = x
 	centY = y
@@ -278,70 +284,63 @@ def getShapeList(x, y, randInt):
 		] # T
 	]
 
-	blockCoorList = shapeList[randInt-1]#random.choice(shapeList)
+	blockCoorList = shapeList[randInt-1]
 
-	return blockCoorList # [[2,0],[3,0]]
+	return blockCoorList
 
-randomShapeID = random.randint(1,7) # 7 is the number of different shapes
+randomShapeID = random.randint(1,7) # There are: 7 different shapes.
 shape = getShapeList(round(COLS/2), -1, randomShapeID)
-shapeTest = Shape(shape, randomShapeID)#shapeRotable(shape)
+tetrimoObj = Shape(shape, randomShapeID)
 
 def spawnNewShape():
-	global shapeTest, displayShape
+	global tetrimoObj, displayShape, score
+	score+=1
 	displayShape = [[0, 0, 0],[0, 0, 0],[0, 0, 0],[0, 0, 0]]
-	shapeTest = []
-	randomShapeID = random.randint(1,7) # 7 is the number of different shapes
+	tetrimoObj = []
+	checkRows()
+	randomShapeID = random.randint(1,7) 
 	shape = getShapeList(round(COLS/2), -1, randomShapeID)
-	shapeTest = Shape(shape, randomShapeID)#shapeRotable(shape)
+	tetrimoObj = Shape(shape, randomShapeID)
 
 
-def checkGrid(): # HERE, delete this
-	pass
-	# global gameArray, gameOver
+def drawSidebar():
+	global start_time, score
 
-	# # If the blocks have reach the top of the screen (Maybe make sure there is a zero in every row as well).
-	# for elem in gameArray[0]:
-	# 	if elem == 0:
-	# 		continue
-	# 	gameOver = True
-
-
-
-def drawArray(array):
-	global shapeTest, displayShape
-
-	for rows in range(ROWS):
-		for cols in range(COLS):
-			if array[rows][cols] != 0:
-				# HERE: USE LETTER TO SOLIDIFY. SOLIDIFY TO A LETTER basded on number, and draw the colors based on number Or letter
-				#drawText(str(array[rows][cols]), cols * SPREAD + MARG, rows * SPREAD + MARG)
-				thisColor = (100, 100, 100)
-
-				if isinstance(array[rows][cols], str):
-					for elem in colors:
-						if elem[0] == array[rows][cols]:
-							thisColor = elem[1]
-						#break
-
-				elif isinstance(array[rows][cols], int):
-					thisColor = colors[array[rows][cols]-1][1]
- 
-				pygame.draw.rect(gameScreen, thisColor, ((cols * SPREAD) + MARG - SPREAD/2, (rows * SPREAD) + MARG - SPREAD/2, SPREAD, SPREAD))
-				# if shapeTest != []:  
-				# 	if shapeTest.cent_yPos == rows and shapeTest.cent_xPos == cols:
-				# 		drawText('C', cols * SPREAD + MARG, rows * SPREAD + MARG)
-
-	if shapeTest != []:
-		shapeTest.drawBlocks()
-
+	pygame.draw.rect(gameScreen, (100,100,100), ((COLS * TILE_SIZE + MARG), 0, WIN_W - (COLS * TILE_SIZE + MARG), WIN_H))
 	for rows in range(4):
 		for cols in range(3):
 			if displayShape[rows][cols] != 0:
 				thisColor = colors[displayShape[rows][cols]-1][1]
-				pygame.draw.rect(gameScreen, thisColor, ((cols * SPREAD) + MARG - SPREAD/2, (rows * SPREAD) + MARG - SPREAD/2, SPREAD, SPREAD))
-	#checkGrid(), I donty think I need this because I am checking the rows in the updateDisplay loop also
+				displayX = (cols * TILE_SIZE) + MARG - TILE_SIZE/2 + (WIN_W-SIDEBAR_W)
+				displayY = (rows * TILE_SIZE) + TILE_SIZE/2
+				pygame.draw.rect(gameScreen, thisColor, (displayX, displayY , TILE_SIZE, TILE_SIZE))
+
+	elapsed_time = time.time() - start_time
+
+	drawText(str(time.strftime("%M:%S", time.gmtime(elapsed_time))), (WIN_W - SIDEBAR_W/2), WIN_H - 37)
+
+	drawText('Score:', (WIN_W - SIDEBAR_W/2), WIN_H / 2 - 20)
+	drawText(str(score), (WIN_W - SIDEBAR_W/2), WIN_H / 2 + 20)
 
 
+def drawArray(array):
+	global tetrimoObj, displayShape
+
+	for rows in range(ROWS):
+		for cols in range(COLS):
+			if array[rows][cols] != 0:
+				if isinstance(array[rows][cols], str):
+					for elem in colors:
+						if elem[0] == array[rows][cols]:
+							thisColor = elem[1]
+				elif isinstance(array[rows][cols], int):
+					thisColor = colors[array[rows][cols]-1][1]
+ 
+				pygame.draw.rect(gameScreen, thisColor, ((cols * TILE_SIZE) + MARG - TILE_SIZE/2, (rows * TILE_SIZE) + MARG - TILE_SIZE/2, TILE_SIZE, TILE_SIZE))
+
+	if tetrimoObj != []:
+		tetrimoObj.drawBlocks()
+	
 
 def updateDisplay():
 	timeTracker = 0
@@ -359,31 +358,30 @@ def updateDisplay():
 					pygame.quit()
 					sys.exit()
 				elif event.key == pygame.K_RIGHT:
-					shapeTest.moveBlocks("Right")
+					tetrimoObj.moveBlocks("Right")
 				elif event.key == pygame.K_LEFT:
-					shapeTest.moveBlocks("Left")
+					tetrimoObj.moveBlocks("Left")
 				elif event.key == pygame.K_UP:
-					shapeTest.rotateBlocks(90)
+					tetrimoObj.rotateBlocks(90)
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_DOWN:
-					if shapeTest != []:
-						shapeTest.updateDown()
-					#shapeTest.rotateBlocks(-90)., This used to be in the KEYUP event
+					if tetrimoObj != []:
+						tetrimoObj.updateDown()
+					#tetrimoObj.rotateBlocks(-90)., This used to be in the KEYUP event
 
 		gameScreen.fill(backgroundCol)
 		if timeTracker % 20 == 0:
-			None
-			# Here, draw the array real time, but play the game in here (separate this function).
-			#shapeMovement(shapeList, "Down")
-			checkRows()
-			if shapeTest != []:
-				shapeTest.updateDown()
+			if tetrimoObj != []:
+				tetrimoObj.updateDown()
 
 		drawArray(gameArray)
+		drawSidebar()
 
 
 		pygame.display.update()
 		clock.tick(60)
+
+	finishTime = time.time() - start_time
 
 	while gameOver:
 		for event in pygame.event.get():
@@ -395,13 +393,14 @@ def updateDisplay():
 					pygame.quit()
 					sys.exit()
 
-		
-
 		if timeTracker % 10 == 0:
 			gameScreen.fill(backgroundCol)
-			#drawArray(gameArray)
-			drawText("GAME OVER", WIN_W/2, WIN_H/2)
 			drawArray(gameArray)
+			drawText("GAME", WIN_W - SIDEBAR_W/2, WIN_H/2 - TILE_SIZE*7)
+			drawText("OVER", WIN_W - SIDEBAR_W/2, WIN_H/2 - TILE_SIZE*5.7)
+			drawText("Score:" , (WIN_W - SIDEBAR_W/2), WIN_H / 2 - 20) 
+			drawText(str(score), (WIN_W - SIDEBAR_W/2), WIN_H / 2 + 20)
+			drawText(str(time.strftime("%M:%S", time.gmtime(finishTime))), (WIN_W - SIDEBAR_W/2), WIN_H - 37)
 
 		pygame.display.update()
 		clock.tick(60)
