@@ -1,11 +1,11 @@
-# Tetris Game recreation
-# Started on 3/4/2020
+# Tetris Game recreation (python v3.8)
+# Started on 3/4/2020, finished on 4/26/2020 6:37 PM.
 import pygame
 import sys
 import random, time
 
 # Make sure to get rid of unnecessary globaL decelerations
-# SIDE: Display Shape, Score, What each key does
+# PRESS R to restart
 
 gameArray = []
 score = 0
@@ -150,11 +150,12 @@ class Shape():
 
 
 	def stopBlocks(self): # Here: Small bug: (Hard to see): The problem is: a row is deleted, and a new block spawns, but it hits a wall at the top, and the game stops for some reason.
-		global gameOver
+		global gameOver, score
 		for e in self.blockList:
 			if e.yPos == 0:
 				gameOver = True
 			e.freeze()
+		score+=1
 		spawnNewShape()
 
 
@@ -293,8 +294,7 @@ shape = getShapeList(round(COLS/2), -1, randomShapeID)
 tetrimoObj = Shape(shape, randomShapeID)
 
 def spawnNewShape():
-	global tetrimoObj, displayShape, score
-	score+=1
+	global tetrimoObj, displayShape
 	displayShape = [[0, 0, 0],[0, 0, 0],[0, 0, 0],[0, 0, 0]]
 	tetrimoObj = []
 	checkRows()
@@ -341,6 +341,34 @@ def drawArray(array):
 	if tetrimoObj != []:
 		tetrimoObj.drawBlocks()
 	
+def restartGame():
+	global gameOver
+	global displayShape
+	global gameArray
+	global score
+	global start_time, shape
+
+	gameOver = False
+	start_time = time.time()
+
+	gameArray = []
+	score = 0
+
+	# Set up the 2D array according to the desired rows and columns.
+	for i in range(ROWS):
+		localCol = []
+		for j in range(COLS):
+			localCol.append(0)
+		gameArray.append(localCol)
+
+	displayShape = [[0, 0, 0],[0, 0, 0],[0, 0, 0],[0, 0, 0]]
+	
+	spawnNewShape()
+	
+	updateDisplay()
+
+	
+
 
 def updateDisplay():
 	timeTracker = 0
@@ -363,6 +391,8 @@ def updateDisplay():
 					tetrimoObj.moveBlocks("Left")
 				elif event.key == pygame.K_UP:
 					tetrimoObj.rotateBlocks(90)
+				elif event.key == pygame.K_r:
+					restartGame()
 			elif event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_DOWN:
 					if tetrimoObj != []:
@@ -392,6 +422,8 @@ def updateDisplay():
 				if event.key == pygame.K_q:
 					pygame.quit()
 					sys.exit()
+				elif event.key == pygame.K_r:
+					restartGame()
 
 		if timeTracker % 10 == 0:
 			gameScreen.fill(backgroundCol)
