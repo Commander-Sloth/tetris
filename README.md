@@ -1,5 +1,5 @@
 # Tetris Python Recreation
-**Description:** This code is recreation of the classic tetris game. This game was not originally designed by me, but this pygame version was programmed by me.
+**Description:** This code is a recreation of the classic tetris game. This game was not originally designed by me, however. I did program this pygame version.
 
 ![Program screenshot](./screenshot.jpg)
 
